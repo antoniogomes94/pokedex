@@ -84,6 +84,25 @@ async function pMap(items, fn, concurrency = CONCURRENCY) {
 
 const idFromUrl = (url) => Number(url.replace(/\/+$/, '').split('/').pop())
 
+/**
+ * A PokéAPI não tem descrições em pt-BR, então traduzimos o texto exibido
+ * no build (endpoint público do Google Translate, com o mesmo cache em disco).
+ * Falha de tradução não derruba o build — cai para o inglês no app.
+ */
+async function translatePt(text) {
+  if (!text) return null
+  const url =
+    'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=' +
+    encodeURIComponent(text)
+  try {
+    const data = await fetchJson(url)
+    const out = data[0].map((seg) => seg[0]).join('')
+    return out.trim() || null
+  } catch {
+    return null
+  }
+}
+
 function formType(pokemonName, isDefault) {
   if (pokemonName.includes('-totem')) return 'other'
   if (pokemonName.includes('-mega')) return 'mega'
@@ -248,6 +267,29 @@ async function main() {
   }
   console.log(`  ${moves.length} golpes`)
 
+  console.log('6½/7 Traduzindo descrições para pt-BR...')
+  const ptBySpecies = new Map()
+  await pMap(
+    species,
+    async (sp) => {
+      const seen = new Set()
+      const flavors = sp.flavor_text_entries
+        .filter((f) => f.language.name === 'en')
+        .map((f) => f.flavor_text.replace(/[\n\f\r]/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter((t) => {
+          if (seen.has(t)) return false
+          seen.add(t)
+          return true
+        })
+      const genus = sp.genera.find((g) => g.language.name === 'en')?.genus ?? null
+      ptBySpecies.set(sp.id, {
+        flavorPt: await translatePt(flavors[flavors.length - 1] ?? null),
+        genusPt: await translatePt(genus),
+      })
+    },
+    4
+  )
+
   console.log('7/7 Gerando JSONs...')
   const index = []
   for (const { data: p, isDefault, species: sp } of pokemons) {
@@ -296,7 +338,9 @@ async function main() {
       sprites,
       cry: p.cries?.latest ?? p.cries?.legacy ?? null,
       genus: sp.genera.find((g) => g.language.name === 'en')?.genus ?? null,
+      genusPt: ptBySpecies.get(sp.id)?.genusPt ?? null,
       flavor,
+      flavorPt: ptBySpecies.get(sp.id)?.flavorPt ?? null,
       genderRate: sp.gender_rate,
       captureRate: sp.capture_rate,
       eggGroups: sp.egg_groups.map((e) => e.name),

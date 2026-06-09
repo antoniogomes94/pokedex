@@ -53,7 +53,9 @@ export interface PokemonDetail {
   sprites: { normal: string | null; shiny: string | null; icon: string | null }
   cry: string | null
   genus: string | null
+  genusPt: string | null
   flavor: { version: string; text: string }[]
+  flavorPt: string | null
   genderRate: number
   captureRate: number
   eggGroups: string[]

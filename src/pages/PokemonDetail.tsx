@@ -45,7 +45,7 @@ export function PokemonDetail() {
   const fav = isFavorite(pokemon.id)
   const inTeam = team.inTeam(pokemon.id)
   const sprite = shiny ? (pokemon.sprites.shiny ?? pokemon.sprites.normal) : pokemon.sprites.normal
-  const flavor = pokemon.flavor[pokemon.flavor.length - 1]
+  const flavorText = pokemon.flavorPt ?? pokemon.flavor[pokemon.flavor.length - 1]?.text
   const genderless = pokemon.genderRate === -1
   const femalePct = (pokemon.genderRate / 8) * 100
 
@@ -76,7 +76,9 @@ export function PokemonDetail() {
             {pokemon.isMythical && ' · Mítico'}
           </span>
           <h1>{displayName(pokemon.name)}</h1>
-          {pokemon.genus && <p className="genus">{pokemon.genus}</p>}
+          {(pokemon.genusPt ?? pokemon.genus) && (
+            <p className="genus">{pokemon.genusPt ?? pokemon.genus}</p>
+          )}
           <div className="badges">
             {pokemon.types.map((t) => (
               <TypeBadge key={t} type={t} />
@@ -112,7 +114,7 @@ export function PokemonDetail() {
 
       <section className="section">
         <h2>Sobre</h2>
-        {flavor && <p className="flavor">“{flavor.text}”</p>}
+        {flavorText && <p className="flavor">“{flavorText}”</p>}
         <div className="about-grid">
           <div className="item">
             <span>Altura</span>
