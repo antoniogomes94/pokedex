@@ -7,13 +7,15 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,9 +25,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # Publica dist/ na branch gh-pages; o GitHub ativa o Pages
-      # automaticamente para essa branch, sem passo manual em Settings.
+      # Caminho 1: publica na branch gh-pages (cobre Source = "Deploy from a branch")
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Caminho 2: deploy via artefato (cobre Source = "GitHub Actions").
+  # Se o Pages estiver configurado para a branch, este job falha sem
+  # derrubar o deploy — o caminho 1 já publicou.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
